@@ -1,3 +1,9 @@
+# Importing packages
+import wntr
+import pandas as pd
+import numpy as np
+
+# Defining the model 
 wn = wntr.network.WaterNetworkModel()
 wn.add_pattern('pat1', [1])
 
