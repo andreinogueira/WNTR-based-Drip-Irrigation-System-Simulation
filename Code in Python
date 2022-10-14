@@ -1,0 +1,90 @@
+wn = wntr.network.WaterNetworkModel()
+wn.add_pattern('pat1', [1])
+
+# Adding the reservatory 
+wn.add_reservoir('res', base_head=18.4, head_pattern='pat1', coordinates=(0,1.5))
+
+# Adding the nodes or junctions
+wn.add_junction('NP1', base_demand=0.00, demand_pattern='pat1', elevation=0,
+                coordinates=(0.25,2))
+wn.add_junction('NP2', base_demand=0.00, demand_pattern='pat1', elevation=0,
+                coordinates=(0.25,3))
+
+for i in range(1,61):
+    wn.add_junction('N'+str(i), base_demand=0.000, 
+                    demand_pattern='pat1', elevation=0.9, coordinates=(i*0.5,3))
+ 
+for k in range(1,241):
+    for j in range(1,61):
+        wn.add_junction('N-'+str(j)+'.'+str(k), base_demand=0.0000, 
+                        demand_pattern='pat1', elevation=0.9, coordinates=(j*0.5,k+3))
+for k in range(1,241):
+    for j in range(1,61):
+        wn.add_junction('N--'+str(j)+'.'+str(k), base_demand=0.0000004094, 
+                        demand_pattern='pat1', elevation=0.9, coordinates=(j*0.5-0.5,k+3))
+     
+# Adding the pipes
+wn.add_pipe('LR', 'res', 'NP1', length=6, diameter=0.100, 
+            roughness=100, minor_loss=0.0, initial_status='OPEN')
+wn.add_pipe('LP1', 'NP1', 'NP2', length=50, diameter=0.075,
+            roughness=100, minor_loss=0.0, initial_status='OPEN')
+wn.add_pipe('LD0', 'NP2', 'N1', length=50, diameter=0.075,
+            roughness=100, minor_loss=0.0, initial_status='OPEN')
+
+for k in range(1,29):    
+    wn.add_pipe('LD'+str(k), 'N'+str(k), 'N'+str(k+1), length=1, diameter=0.075, 
+                roughness=100, minor_loss=0.0, initial_status='OPEN')
+
+for l in range(29,60):    
+    wn.add_pipe('LD'+str(l), 'N'+str(l), 'N'+str(l+1), length=1, diameter=0.050, 
+                roughness=100, minor_loss=0.0, initial_status='OPEN')
+                
+for m in range(1,61):
+    wn.add_pipe('LL'+str(m)+'.1', 'N'+str(m), 'N-'+str(m)+'.1', length=0.3, diameter=0.016, 
+                roughness=100, minor_loss=0.0, initial_status='OPEN')
+
+for k in range(2,241):
+    for m in range(1,61):    
+        wn.add_pipe('LL'+str(m)+'.'+str(k), 'N-'+str(m)+'.'+str(k-1), 'N-'+str(m)+'.'+str(k), length=0.3, diameter=0.016, 
+                    roughness=100, minor_loss=0.0, initial_status='OPEN')
+
+for k in range(1,241):
+    for m in range(1,61):    
+        wn.add_pipe('LL-'+str(m)+'.'+str(k), 'N-'+str(m)+'.'+str(k), 'N--'+str(m)+'.'+str(k), length=0.1, diameter=0.01, 
+                    roughness=100, minor_loss=0.0, initial_status='OPEN')
+    
+
+# Here you can simulate leaks 
+# wn = wntr.morph.split_pipe(wn,'LD30','LEAKING-PIPE','Leak')
+# leak_node = wn.get_node('Leak')
+# leak_node.add_leak(wn, area= 3.762351084932263e-06, start_time=5, end_time=20)
+    
+# Define the operations parameters
+wn.options.hydraulic.demand_model = 'PDD'
+wn.options.time.hydraulic_timestep = 1
+wn.options.time.report_timestep = 1
+wn.options.time.duration = 6
+
+wn.options.hydraulic.required_pressure = 18.4  
+wn.options.hydraulic.minimum_pressure  = 0
+
+for i in range(1,61):
+    junction = wn.get_node('N'+str(i))
+    junction.required_pressure = 11.4 # 20 psi = 14.065 m
+    junction.minimum_pressure = 0 
+
+for k in range(1,241):
+    for i in range(1,61):
+        junction = wn.get_node('N--'+str(i)+'.'+str(k))
+        junction.required_pressure = 10 # 20 psi = 14.065 mh 
+        junction.minimum_pressure = 0       
+
+# Simulation
+sim = wntr.sim.WNTRSimulator(wn)
+results = sim.run_sim()    
+     
+# Plot results on the network      
+pressure = results.node['pressure']  
+display(pressure)      
+flowrate = results.link['flowrate']
+display(flowrate)
